@@ -23,9 +23,58 @@ __msg_detect_tty() {
 	fi
 }
 
-## Only "public" function in this library
-msg() {
-	:
+# set colors based on tput if avalable
+if tput -V > /dev/null 2>&1
+then
+	__red=$(tput setaf 1)
+	__blue=$(tput setaf 4)
+	__NC=$(tput sgr0)
+else
+	__red="\e[31m"
+	__blue="\e[34m"
+	__NC="\e[0m"
+fi
+
+# Prefix strings space padded to be 8 spaces long
+__no_pre="        "
+__info="+++++++ "
+__warn="warning "
+__error="ERROR   "
+__fatal="FATAL!! "
+
+
+# log takes 2 arguments, a severity and a string in that order
+# severity is an intiger from 1 to 5
+# if log does not reconsie the severity it passes all argumets to __msg
+log() {
+	case "${1}" in
+		1) shift; prefix="${__no_pre}"; color="${__NC}"  ; __msg "${@}" ;;
+		2) shift; prefix="${__info}"  ; color="${__NC}"  ; __msg "${@}" ;;
+		3) shift; prefix="${__warn}"  ; color="${__blue}"; __msg "${@}" ;;
+		4) shift; prefix="${__error}" ; color="${__red}" ; __err "${@}" ;;
+		5) shift; prefix="${__fatal}" ; color="${__red}" ; __die "${@}" ;;
+		*) prefix="$__no_pre" ; color="${__NC}" ; __msg "${@}" ;;
+	esac
+}
+
+__msg() {
+	if [ ${__msg_istty} -eq 0 ]
+	then
+		printf "%s%s[%s] %s%s\n" \
+			"${color}" "${prefix}" "${__msg_myname}" "${1}" "${__NC}"
+	else
+		printf "%s[%s] %s\n" "${prefix}" "${__msg_myname}" "${1}"
+	fi
+	unset prefix; unset color
+}
+
+__err() {
+	__msg "${1}" 2>&1
+}
+
+__die() {
+	__err "${1}"
+	exit 1
 }
 
 usage() {
